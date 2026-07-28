@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<!-- 资源已从 base64 改为从家庭 NAS 的 nginx 获取。
+     请将下面的 http://192.168.1.100:8080 替换为你家 NAS 的 nginx 实际地址（局域网 IP + 端口），
+     路径前缀为 /info/heros/ ，与 zip 包内的 info/heros/ 目录结构一致。 -->
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>奥特曼卡片 · 小批量验证（堆叠滑动 6张）</title>
+<style>
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: #0a0a1a; color: #e0e0e0; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
+.stage { display: flex; gap: 50px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+.flip-card { perspective: 1200px; width: 300px; height: 462px; }
+.flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1); transform-style: preserve-3d; cursor: pointer; }
+.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+.flip-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 14px; overflow: hidden; }
+.flip-back { transform: rotateY(180deg); }
+/* 翻转后禁用正面点击，未翻转时禁用背面点击，防止遮挡 */
+.flip-card.flipped > .flip-inner > .flip-face:not(.flip-back) { pointer-events: none; }
+.flip-card:not(.flipped) > .flip-inner > .flip-back { pointer-events: none; }
+.card-label { text-align: center; font-size: 0.85em; color: #888; margin-bottom: 12px; letter-spacing: 1px; }
+.flip-hint { text-align: center; font-size: 0.75em; color: #555; margin-top: 10px; }
+
+/* ===== 正面 TCG ===== */
+.card-tcg { width: 100%; height: 100%; border-radius: 14px; background: #0d0d20; border: 3px solid #ffaa00; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.tcg-border { position: absolute; inset: 5px; border: 1px solid rgba(255,200,100,0.2); border-radius: 10px; pointer-events: none; z-index: 6; }
+.tcg-img-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: center; background: radial-gradient(ellipse at 50% 35%, rgba(40,40,80,0.4) 0%, rgba(10,10,20,0.95) 80%); }
+.tcg-img-bg img { width: 100%; height: 75%; object-fit: contain; object-position: center top; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6)); }
+.tcg-img-gradient { position: absolute; bottom: 0; left: 0; right: 0; height: 42%; background: linear-gradient(180deg, transparent 0%, rgba(13,13,32,0.85) 40%, rgba(13,13,32,0.97) 70%, #0d0d20 100%); z-index: 2; }
+.tcg-topbar { position: relative; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 4px; flex-shrink: 0; }
+.tcg-red-ball { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #ff5555, #cc2222); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 14px; box-shadow: 0 0 10px rgba(255,68,68,0.5); }
+.tcg-topbar-right { color: #ffd700; letter-spacing: 1px; font-size: 13px; text-shadow: 0 0 6px rgba(255,215,0,0.5); background: rgba(0,0,0,0.3); padding: 3px 10px; border-radius: 12px; }
+.tcg-info { position: relative; z-index: 4; padding: 8px 16px 4px; margin-top: auto; }
+.tcg-name-cn { font-size: 20px; font-weight: bold; color: #fff; text-align: center; text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 5px; }
+.tcg-stats { display: flex; justify-content: space-between; font-size: 10px; padding: 3px 0; }
+.tcg-stat { display: flex; flex-direction: column; align-items: center; }
+.tcg-stat-label { color: #777; font-size: 9px; }
+.tcg-stat-val { color: #ffd700; font-weight: bold; font-size: 11px; }
+.tcg-effect { margin-top: 4px; padding: 4px 8px; background: rgba(255,255,255,0.06); border-radius: 5px; font-size: 9px; color: #bbb; line-height: 1.5; text-align: center; }
+.tcg-bottombar { position: relative; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 12px; font-size: 10px; color: #666; border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+
+/* ===== 背面 收藏卡 ===== */
+.card-collect {
+  width: 100%; height: 100%;
+  background: linear-gradient(180deg, #f7f6f5 0%, #f0eeed 50%, #f7f6f5 100%);
+  border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+  position: relative; border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* 标题栏 */
+.collect-title-bar {
+  height: 16%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(245,243,241,0.8) 0%, rgba(247,246,244,0.3) 100%);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  flex-shrink: 0; padding: 8px 16px; position: relative;
+}
+.collect-title-bar::after {
+  content: ''; position: absolute; bottom: -1px; left: 20%; right: 20%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.1), transparent);
+}
+.collect-en-name {
+  font-size: 22px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+  background: linear-gradient(90deg, #886622, #bb9933, #886622);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 4px rgba(150,120,50,0.2));
+  line-height: 1.1;
+}
+.collect-en-sub {
+  font-size: 10px; color: #888; letter-spacing: 4px; margin-top: 2px; text-transform: uppercase;
+}
+
+/* 主图区 */
+.collect-img {
+  height: 76%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; flex-shrink: 0;
+  background: #f0eeed;
+}
+.collect-img img {
+  width: 96%; height: 100%; object-fit: contain; object-position: center;
+  position: relative; z-index: 2;
+}
+/* 聚光灯遮罩层 */
+.spotlight-mask {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: transparent;
+}
+/* 中心高亮光晕 */
+.spotlight-glow {
+  position: absolute; z-index: 4; pointer-events: none;
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 40%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+/* 光晕扩散消散动画 */
+@keyframes glowExpand {
+  0%   { width: 70px; height: 70px; opacity: 1; }
+  100% { width: 600px; height: 600px; opacity: 0; }
+}
+.spotlight-glow.expanding {
+  animation: glowExpand 5s ease-out forwards;
+}
+/* 遮罩扩散消散 */
+@keyframes maskExpand {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.spotlight-mask.expanding {
+  animation: maskExpand 5s ease-out forwards;
+}
+}
+
+/* 信息区 */
+.collect-body {
+  padding: 4px 18px 6px; flex: 1; display: flex; flex-direction: column; justify-content: center;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  background: linear-gradient(180deg, rgba(245,243,241,0.6) 0%, rgba(238,235,233,0.9) 100%);
+  position: relative;
+}
+.collect-year { font-size: 0.6em; color: #777; text-transform: uppercase; letter-spacing: 1px; }
+.collect-works { font-size: 0.7em; color: #888; position: absolute; left: 12px; bottom: 8px; }
+
+/* 背面右下角工具图标 */
+.collect-tools {
+  position: absolute; right: 12px; bottom: 8px;
+  display: flex; gap: 8px; z-index: 10;
+}
+.tool-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08);
+  cursor: pointer; transition: all 0.2s ease; font-size: 14px;
+  color: #666; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.tool-btn:hover {
+  background: rgba(255,255,255,0.95); transform: scale(1.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12); color: #333;
+}
+.tool-btn:active { transform: scale(0.95); }
+.tool-btn.active {
+  background: rgba(255,215,0,0.25); border-color: rgba(255,200,0,0.4); color: #b8860b;
+}
+
+.info-panel { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 25px; max-width: 350px; border: 1px solid rgba(255,255,255,0.08); }
+.info-panel h3 { font-size: 1.1em; margin-bottom: 15px; color: #ffaa00; border-bottom: 1px solid rgba(255,170,0,0.2); padding-bottom: 8px; }
+.info-panel table { width: 100%; font-size: 0.85em; border-collapse: collapse; }
+.info-panel td { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.info-panel td:first-child { color: #888; width: 80px; }
+.info-panel td:last-child { color: #ddd; font-weight: 600; }
+.info-panel .hint { margin-top: 15px; font-size: 0.8em; color: #666; line-height: 1.6; }
+
+
+/* ===== 页面容器（堆叠滑动展示） ===== */
+body {
+  min-height: 100vh; margin: 0;
+  background: #080810;
+  background-image: radial-gradient(circle, rgba(120,80,255,0.06) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  user-select: none; overflow: hidden;
+}
+.header { text-align: center; margin-bottom: 26px; }
+.header .counter {
+  font-size: 11px; letter-spacing: 0.18em; color: rgba(255,255,255,0.28);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.header h1 { font-size: 22px; font-weight: 300; color: rgba(255,255,255,0.82); letter-spacing: 0.04em; }
+/* 堆叠区：所有卡片绝对定位于此 */
+.stack-area { position: relative; width: 300px; height: 462px; }
+/* 覆盖模板默认 .flip-card（改为堆叠绝对定位） */
+.flip-card { position: absolute; inset: 0; transform-origin: center bottom; will-change: transform; }
+.dots { display: flex; gap: 8px; margin-top: 26px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.22); transition: all 0.3s ease; cursor: pointer; }
+.dot.active { background: #ffd700; width: 22px; border-radius: 4px; }
+.hint { font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 0.08em; margin-top: 28px; text-align: center; }
+/* 拖拽方向徽章 */
+.badge-prev, .badge-next {
+  position: absolute; top: 24px; z-index: 60; padding: 5px 14px; border-radius: 8px;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.1em;
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+}
+.badge-prev { left: 24px; border: 2px solid #ffd700; color: #ffd700; transform: rotate(-12deg); }
+.badge-next { right: 24px; border: 2px solid #4ade80; color: #4ade80; transform: rotate(12deg); }
+
+
+.flip-card:not(.flipped) > .flip-inner > .flip-back { display: none !important; }
+.flip-card.flipped > .flip-inner > .flip-face:not(.flip-back) { display: none !important; }
+
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="counter" id="counter">1 / 6</div>
+  <h1>奥特曼卡片 · 小批量验证</h1>
+</div>
+<div class="stack-area" id="stackArea">
+<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c1_flipCard">
+      <div class="flip-inner">
+        <div class="flip-face">
+          <div class="card-tcg">
+            <div class="tcg-border"></div>
+            <div class="tcg-img-bg" id="c1_frontImgArea">
+              <img src="http://192.168.1.100:8080/info/heros/01_初代奥特曼/fullbody.png" alt="奥特曼 正面">
+              <div class="tcg-img-gradient"></div>
+            </div>
+            <div class="tcg-topbar">
+              <div class="tcg-red-ball">★</div>
+              <span class="tcg-topbar-right" id="c1_tcgRarity">★★★★☆</span>
+            </div>
+            <div class="tcg-info">
+              <div class="tcg-name-cn" id="c1_tcgNameCn">赛罗</div>
+              <div class="tcg-stats">
+                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c1_tcgHeight">49m</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c1_tcgWeight">35000t</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c1_tcgSpeed">马赫7</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c1_tcgAge">5900岁</span></span>
+              </div>
+              <div class="tcg-effect" id="c1_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
+            </div>
+            <div class="tcg-bottombar">
+              <span id="c1_tcgNo">NO.033</span>
+              <span id="c1_tcgJustfor">@Dazhizi</span>
+            </div>
+          </div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="card-collect">
+            <div class="collect-title-bar">
+              <div class="collect-en-name" id="c1_collectEnName">Ultraman Zero</div>
+              <div class="collect-en-sub" id="c1_collectEnSub">赛罗奥特曼</div>
+            </div>
+            <div class="collect-img" id="c1_collectImg">
+              <img src="http://192.168.1.100:8080/info/heros/01_初代奥特曼/babytype.png" alt="奥特曼 背面">
+              <div class="spotlight-mask" id="c1_spotlightMask"></div>
+              <div class="spotlight-glow" id="c1_spotlightGlow"></div>
+            </div>
+            <div class="collect-body">
+              <div class="collect-works" id="c1_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
+              <div class="collect-tools">
+                <div class="tool-btn" id="c1_flashlightBtn" title="手电筒">🔦</div>
+                <div class="tool-btn" id="c1_speakerBtn" title="音效">🔊</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c2_flipCard">
+      <div class="flip-inner">
+        <div class="flip-face">
+          <div class="card-tcg">
+            <div class="tcg-border"></div>
+            <div class="tcg-img-bg" id="c2_frontImgArea">
+              <img src="http://192.168.1.100:8080/info/heros/02_佐菲奥特曼/fullbody.png" alt="佐菲 正面">
+              <div class="tcg-img-gradient"></div>
+            </div>
+            <div class="tcg-topbar">
+              <div class="tcg-red-ball">★</div>
+              <span class="tcg-topbar-right" id="c2_tcgRarity">★★★★☆</span>
+            </div>
+            <div class="tcg-info">
+              <div class="tcg-name-cn" id="c2_tcgNameCn">赛罗</div>
+              <div class="tcg-stats">
+                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c2_tcgHeight">49m</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c2_tcgWeight">35000t</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c2_tcgSpeed">马赫7</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c2_tcgAge">5900岁</span></span>
+              </div>
+              <div class="tcg-effect" id="c2_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
+            </div>
+            <div class="tcg-bottombar">
+              <span id="c2_tcgNo">NO.033</span>
+              <span id="c2_tcgJustfor">@Dazhizi</span>
+            </div>
+          </div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="card-collect">
+            <div class="collect-title-bar">
+              <div class="collect-en-name" id="c2_collectEnName">Ultraman Zero</div>
+              <div class="collect-en-sub" id="c2_collectEnSub">赛罗奥特曼</div>
+            </div>
+            <div class="collect-img" id="c2_collectImg">
+              <img src="http://192.168.1.100:8080/info/heros/02_佐菲奥特曼/babytype.png" alt="佐菲 背面">
+              <div class="spotlight-mask" id="c2_spotlightMask"></div>
+              <div class="spotlight-glow" id="c2_spotlightGlow"></div>
+            </div>
+            <div class="collect-body">
+              <div class="collect-works" id="c2_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
+              <div class="collect-tools">
+                <div class="tool-btn" id="c2_flashlightBtn" title="手电筒">🔦</div>
+                <div class="tool-btn" id="c2_speakerBtn" title="音效">🔊</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c3_flipCard">
+      <div class="flip-inner">
+        <div class="flip-face">
+          <div class="card-tcg">
+            <div class="tcg-border"></div>
+            <div class="tcg-img-bg" id="c3_frontImgArea">
+              <img src="http://192.168.1.100:8080/info/heros/03_赛文奥特曼/fullbody.png" alt="赛文 正面">
+              <div class="tcg-img-gradient"></div>
+            </div>
+            <div class="tcg-topbar">
+              <div class="tcg-red-ball">★</div>
+              <span class="tcg-topbar-right" id="c3_tcgRarity">★★★★☆</span>
+            </div>
+            <div class="tcg-info">
+              <div class="tcg-name-cn" id="c3_tcgNameCn">赛罗</div>
+              <div class="tcg-stats">
+                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c3_tcgHeight">49m</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c3_tcgWeight">35000t</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c3_tcgSpeed">马赫7</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c3_tcgAge">5900岁</span></span>
+              </div>
+              <div class="tcg-effect" id="c3_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
+            </div>
+            <div class="tcg-bottombar">
+              <span id="c3_tcgNo">NO.033</span>
+              <span id="c3_tcgJustfor">@Dazhizi</span>
+            </div>
+          </div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="card-collect">
+            <div class="collect-title-bar">
+              <div class="collect-en-name" id="c3_collectEnName">Ultraman Zero</div>
+              <div class="collect-en-sub" id="c3_collectEnSub">赛罗奥特曼</div>
+            </div>
+            <div class="collect-img" id="c3_collectImg">
+              <img src="http://192.168.1.100:8080/info/heros/03_赛文奥特曼/babytype.png" alt="赛文 背面">
+              <div class="spotlight-mask" id="c3_spotlightMask"></div>
+              <div class="spotlight-glow" id="c3_spotlightGlow"></div>
+            </div>
+            <div class="collect-body">
+              <div class="collect-works" id="c3_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
+              <div class="collect-tools">
+                <div class="tool-btn" id="c3_flashlightBtn" title="手电筒">🔦</div>
+                <div class="tool-btn" id="c3_speakerBtn" title="音效">🔊</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c4_flipCard">
+      <div class="flip-inner">
+        <div class="flip-face">
+          <div class="card-tcg">
+            <div class="tcg-border"></div>
+            <div class="tcg-img-bg" id="c4_frontImgArea">
+              <img src="http://192.168.1.100:8080/info/heros/04_杰克奥特曼/fullbody.png" alt="杰克 正面">
+              <div class="tcg-img-gradient"></div>
+            </div>
+            <div class="tcg-topbar">
+              <div class="tcg-red-ball">★</div>
+              <span class="tcg-topbar-right" id="c4_tcgRarity">★★★★☆</span>
+            </div>
+            <div class="tcg-info">
+              <div class="tcg-name-cn" id="c4_tcgNameCn">赛罗</div>
+              <div class="tcg-stats">
+                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c4_tcgHeight">49m</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c4_tcgWeight">35000t</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c4_tcgSpeed">马赫7</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c4_tcgAge">5900岁</span></span>
+              </div>
+              <div class="tcg-effect" id="c4_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
+            </div>
+            <div class="tcg-bottombar">
+              <span id="c4_tcgNo">NO.033</span>
+              <span id="c4_tcgJustfor">@Dazhizi</span>
+            </div>
+          </div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="card-collect">
+            <div class="collect-title-bar">
+              <div class="collect-en-name" id="c4_collectEnName">Ultraman Zero</div>
+              <div class="collect-en-sub" id="c4_collectEnSub">赛罗奥特曼</div>
+            </div>
+            <div class="collect-img" id="c4_collectImg">
+              <img src="http://192.168.1.100:8080/info/heros/04_杰克奥特曼/babytype.png" alt="杰克 背面">
+              <div class="spotlight-mask" id="c4_spotlightMask"></div>
+              <div class="spotlight-glow" id="c4_spotlightGlow"></div>
+            </div>
+            <div class="collect-body">
+              <div class="collect-works" id="c4_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
+              <div class="collect-tools">
+                <div class="tool-btn" id="c4_flashlightBtn" title="手电筒">🔦</div>
+                <div class="tool-btn" id="c4_speakerBtn" title="音效">🔊</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c5_flipCard">
+      <div class="flip-inner">
+        <div class="flip-face">
+          <div class="card-tcg">
+            <div class="tcg-border"></div>
+            <div class="tcg-img-bg" id="c5_frontImgArea">
+              <img src="http://192.168.1.100:8080/info/heros/05_艾斯奥特曼/fullbody.png" alt="艾斯 正面">
+              <div class="tcg-img-gradient"></div>
+            </div>
+            <div class="tcg-topbar">
+              <div class="tcg-red-ball">★</div>
+              <span class="tcg-topbar-right" id="c5_tcgRarity">★★★★☆</span>
+            </div>
+            <div class="tcg-info">
+              <div class="tcg-name-cn" id="c5_tcgNameCn">赛罗</div>
+              <div class="tcg-stats">
+                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c5_tcgHeight">49m</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c5_tcgWeight">35000t</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c5_tcgSpeed">马赫7</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c5_tcgAge">5900岁</span></span>
+              </div>
+              <div class="tcg-effect" id="c5_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
+            </div>
+            <div class="tcg-bottombar">
+              <span id="c5_tcgNo">NO.033</span>
+              <span id="c5_tcgJustfor">@Dazhizi</span>
+            </div>
+          </div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="card-collect">
+            <div class="collect-title-bar">
+              <div class="collect-en-name" id="c5_collectEnName">Ultraman Zero</div>
+              <div class="collect-en-sub" id="c5_collectEnSub">赛罗奥特曼</div>
+            </div>
+            <div class="collect-img" id="c5_collectImg">
+              <img src="http://192.168.1.100:8080/info/heros/05_艾斯奥特曼/babytype.png" alt="艾斯 背面">
+              <div class="spotlight-mask" id="c5_spotlightMask"></div>
+              <div class="spotlight-glow" id="c5_spotlightGlow"></div>
+            </div>
+            <div class="collect-body">
+              <div class="collect-works" id="c5_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
+              <div class="collect-tools">
+                <div class="tool-btn" id="c5_flashlightBtn" title="手电筒">🔦</div>
+                <div class="tool-btn" id="c5_speakerBtn" title="音效">🔊</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c6_flipCard">
+      <div class="flip-inner">
+        <div class="flip-face">
+          <div class="card-tcg">
+            <div class="tcg-border"></div>
+            <div class="tcg-img-bg" id="c6_frontImgArea">
+              <img src="http://192.168.1.100:8080/info/heros/06_泰罗奥特曼/fullbody.png" alt="泰罗 正面">
+              <div class="tcg-img-gradient"></div>
+            </div>
+            <div class="tcg-topbar">
+              <div class="tcg-red-ball">★</div>
+              <span class="tcg-topbar-right" id="c6_tcgRarity">★★★★☆</span>
+            </div>
+            <div class="tcg-info">
+              <div class="tcg-name-cn" id="c6_tcgNameCn">赛罗</div>
+              <div class="tcg-stats">
+                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c6_tcgHeight">49m</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c6_tcgWeight">35000t</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c6_tcgSpeed">马赫7</span></span>
+                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c6_tcgAge">5900岁</span></span>
+              </div>
+              <div class="tcg-effect" id="c6_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
+            </div>
+            <div class="tcg-bottombar">
+              <span id="c6_tcgNo">NO.033</span>
+              <span id="c6_tcgJustfor">@Dazhizi</span>
+            </div>
+          </div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="card-collect">
+            <div class="collect-title-bar">
+              <div class="collect-en-name" id="c6_collectEnName">Ultraman Zero</div>
+              <div class="collect-en-sub" id="c6_collectEnSub">赛罗奥特曼</div>
+            </div>
+            <div class="collect-img" id="c6_collectImg">
+              <img src="http://192.168.1.100:8080/info/heros/06_泰罗奥特曼/babytype.png" alt="泰罗 背面">
+              <div class="spotlight-mask" id="c6_spotlightMask"></div>
+              <div class="spotlight-glow" id="c6_spotlightGlow"></div>
+            </div>
+            <div class="collect-body">
+              <div class="collect-works" id="c6_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
+              <div class="collect-tools">
+                <div class="tool-btn" id="c6_flashlightBtn" title="手电筒">🔦</div>
+                <div class="tool-btn" id="c6_speakerBtn" title="音效">🔊</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+</div>
+<div class="dots" id="dots">
+  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+</div>
+<p class="hint">← 拖拽 / 滑动切换卡片 →　·　轻点卡片翻转　·　点击 🔦 触发聚光灯　·　点击 🔊 播放音效</p>
+<script>
+
+const JUSTFOR = "Dazhizi";
+const HEROES = [{"index": 1, "en": "Ultraman", "jp": "ウルトラマン", "cn": "奥特曼", "year": 1966, "works": "奥特曼(初代)", "height": "40m", "weight": "35000t", "speed": "马赫5", "home": "M78星云·光之国", "skill": "斯派修姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes01_ultraman.jpg", "rarity": 1, "logo_local": "heros/01_初代奥特曼/logo.png", "fullbody_local": "heros/01_初代奥特曼/fullbody.png", "thumbnail_local": "heros/01_初代奥特曼/thumbnail.jpg", "babytype_local": "heros/01_初代奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "20000岁", "transform_item": "贝塔魔棒", "weapon": "八分光轮", "activity_time": "3分钟"}, {"index": 2, "en": "Zoffy", "jp": "ゾフィー", "cn": "佐菲", "year": 1967, "works": "奥特曼", "height": "45m", "weight": "45000t", "speed": "马赫10", "home": "M78星云·光之国", "skill": "M87光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2019/05/Zoffy-Top.png", "rarity": 3, "logo_local": "heros/02_佐菲奥特曼/logo.png", "fullbody_local": "heros/02_佐菲奥特曼/fullbody.png", "thumbnail_local": "heros/02_佐菲奥特曼/thumbnail.png", "babytype_local": "heros/02_佐菲奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "25000岁", "transform_item": "无专属变身道具", "weapon": "奥特盾牌", "activity_time": "3分钟"}, {"index": 3, "en": "Ultraseven", "jp": "ウルトラセブン", "cn": "赛文", "year": 1967, "works": "赛文奥特曼", "height": "40m", "weight": "35000t", "speed": "马赫7", "home": "M78星云·光之国", "skill": "艾梅利姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes02_ultraseven.jpg", "rarity": 1, "logo_local": "heros/03_赛文奥特曼/logo.png", "fullbody_local": "heros/03_赛文奥特曼/fullbody.png", "thumbnail_local": "heros/03_赛文奥特曼/thumbnail.jpg", "babytype_local": "heros/03_赛文奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "19000岁", "transform_item": "奥特眼镜", "weapon": "头镖", "activity_time": "约3分钟"}, {"index": 4, "en": "Ultraman Jack", "jp": "ウルトラマンジャック", "cn": "杰克", "year": 1971, "works": "杰克奥特曼", "height": "40m", "weight": "35000t", "speed": "马赫5", "home": "M78星云·光之国", "skill": "斯派修姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes03_jack.jpg", "rarity": 2, "logo_local": "heros/04_杰克奥特曼/logo.png", "fullbody_local": "heros/04_杰克奥特曼/fullbody.png", "thumbnail_local": "heros/04_杰克奥特曼/thumbnail.jpg", "babytype_local": "heros/04_杰克奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "17000岁", "transform_item": "无专属变身道具（意念变身）", "weapon": "奥特手镯", "activity_time": "3分钟"}, {"index": 5, "en": "Ultraman Ace", "jp": "ウルトラマンA", "cn": "艾斯", "year": 1972, "works": "艾斯奥特曼", "height": "40m", "weight": "45000t", "speed": "马赫20", "home": "M78星云·光之国", "skill": "梅塔利姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes04_ace.jpg", "rarity": 2, "logo_local": "heros/05_艾斯奥特曼/logo.png", "fullbody_local": "heros/05_艾斯奥特曼/fullbody.png", "thumbnail_local": "heros/05_艾斯奥特曼/thumbnail.jpg", "babytype_local": "heros/05_艾斯奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "15000岁", "transform_item": "奥特戒指", "weapon": "奥特断头刀", "activity_time": "3分钟"}, {"index": 6, "en": "Ultraman Taro", "jp": "ウルトラマンタロウ", "cn": "泰罗", "year": 1973, "works": "泰罗奥特曼", "height": "53m", "weight": "55000t", "speed": "马赫20", "home": "M78星云·光之国", "skill": "斯特利姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes05_taro.jpg", "rarity": 5, "logo_local": "heros/06_泰罗奥特曼/logo.png", "fullbody_local": "heros/06_泰罗奥特曼/fullbody.png", "thumbnail_local": "heros/06_泰罗奥特曼/thumbnail.jpg", "babytype_local": "heros/06_泰罗奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "12000岁", "transform_item": "奥特徽章", "weapon": "手镯王冠", "activity_time": "3分钟"}];
+const AUDIO = [["http://192.168.1.100:8080/info/heros/01_初代奥特曼/audio-yell-1.mp3"], ["http://192.168.1.100:8080/info/heros/02_佐菲奥特曼/audio-skill-1.mp3"], ["http://192.168.1.100:8080/info/heros/03_赛文奥特曼/audio-yell-1.mp3", "http://192.168.1.100:8080/info/heros/03_赛文奥特曼/audio-bell-1.mp3"], ["http://192.168.1.100:8080/info/heros/04_杰克奥特曼/audio-yell-1.mp3"], ["http://192.168.1.100:8080/info/heros/05_艾斯奥特曼/audio-yell-1.mp3"], ["http://192.168.1.100:8080/info/heros/06_泰罗奥特曼/audio-bell-1.mp3"]];    // 每个角色对应的音频 data URI 列表（按 yell>skill>bell 排序）
+
+/* ---------- 数据填充 ---------- */
+function populateCard(hero, p) {
+  const set = (id, val) => { const el = document.getElementById(p + id); if (el) el.textContent = val; };
+  const setHTML = (id, val) => { const el = document.getElementById(p + id); if (el) el.innerHTML = val; };
+  set('tcgNameCn', hero.cn);
+  set('tcgHeight', hero.height);
+  set('tcgWeight', hero.weight);
+  set('tcgSpeed', hero.speed);
+  set('tcgAge', hero.age);
+  set('tcgEffect', '【' + hero.skill + '】' + hero.weapon + ' · ' + hero.transform_item);
+  set('tcgNo', 'NO.' + String(hero.index).padStart(3, '0'));
+  set('tcgJustfor', '@' + JUSTFOR);
+  set('tcgRarity', '★'.repeat(hero.rarity) + '☆'.repeat(5 - hero.rarity));
+  set('collectEnName', hero.en);
+  set('collectEnSub', hero.works);
+  setHTML('collectWorks', '<span style="color:#aaa;">来自</span> ' + hero.home);
+}
+
+/* ---------- 背面聚光灯（保留原交互） ---------- */
+function initSpotlight(p) {
+  const imgContainer = document.getElementById(p + 'collectImg');
+  const mask = document.getElementById(p + 'spotlightMask');
+  const glow = document.getElementById(p + 'spotlightGlow');
+  const flashlightBtn = document.getElementById(p + 'flashlightBtn');
+  if (!imgContainer || !mask || !glow) return;
+  let isAnimating = false, spotlightActive = false, animFrame = null;
+  function setSpotlight(px, py) {
+    mask.style.background = `radial-gradient(circle 50px at ${px}% ${py}%, rgba(240,238,237,0) 0%, rgba(100,95,90,0.5) 55%, rgba(40,35,32,0.85) 100%)`;
+    glow.style.opacity = '1'; glow.style.top = py + '%'; glow.style.left = px + '%';
+  }
+  function updateSpotlight(x, y) {
+    if (isAnimating || !spotlightActive) return;
+    const rect = imgContainer.getBoundingClientRect();
+    setSpotlight(((x - rect.left) / rect.width) * 100, ((y - rect.top) / rect.height) * 100);
+  }
+  function playFlashlightShake() {
+    isAnimating = true; spotlightActive = true;
+    const startTime = performance.now(), shakeDuration = 5000, pauseDuration = 500, cx = 50, cy = 50;
+    const waypoints = [{x:50,y:50},{x:32,y:28},{x:68,y:62},{x:25,y:40},{x:55,y:20},{x:75,y:65},{x:18,y:52},{x:62,y:30},{x:45,y:58},{x:70,y:38},{x:30,y:48},{x:52,y:42},{x:50,y:50}];
+    function animateShake(now) {
+      const elapsed = now - startTime;
+      if (elapsed >= shakeDuration) { setSpotlight(cx, cy); setTimeout(startExpand, pauseDuration); return; }
+      const progress = elapsed / shakeDuration, segCount = waypoints.length - 1;
+      const rawIdx = progress * segCount, idx = Math.floor(rawIdx), t = rawIdx - idx;
+      const ease = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+      const wp0 = waypoints[Math.min(idx, segCount)], wp1 = waypoints[Math.min(idx + 1, segCount)];
+      setSpotlight(wp0.x + (wp1.x - wp0.x) * ease, wp0.y + (wp1.y - wp0.y) * ease);
+      animFrame = requestAnimationFrame(animateShake);
+    }
+    animFrame = requestAnimationFrame(animateShake);
+  }
+  function startExpand() {
+    glow.classList.remove('expanding'); mask.classList.remove('expanding'); void glow.offsetWidth;
+    glow.classList.add('expanding'); mask.classList.add('expanding');
+    setTimeout(function() {
+      glow.classList.remove('expanding'); mask.classList.remove('expanding');
+      mask.style.background = 'transparent'; mask.style.opacity = '1';
+      glow.style.opacity = '1'; glow.style.width = '70px'; glow.style.height = '70px';
+      isAnimating = false; spotlightActive = false;
+    }, 5100);
+  }
+  imgContainer.addEventListener('mousemove', e => updateSpotlight(e.clientX, e.clientY));
+  imgContainer.addEventListener('mouseleave', () => { if (!isAnimating && !spotlightActive) return; setSpotlight(50, 50); });
+  if (flashlightBtn) flashlightBtn.addEventListener('click', e => {
+    e.stopPropagation(); if (isAnimating) return;
+    flashlightBtn.classList.add('active'); playFlashlightShake();
+    setTimeout(() => flashlightBtn.classList.remove('active'), 10500);
+  });
+}
+
+/* ---------- 背面 🔊 小喇叭音效 ---------- */
+function initAudio(p, audioList) {
+  const speakerBtn = document.getElementById(p + 'speakerBtn');
+  if (!speakerBtn) return;
+  if (!audioList || !audioList.length) { speakerBtn.style.display = 'none'; return; }  // 无音频则隐藏按钮
+  const audioEl = new Audio();
+  audioEl.preload = 'auto';
+  let idx = 0, timer = null;
+  speakerBtn.addEventListener('click', e => {
+    e.stopPropagation();                       // 不触发卡片翻转/拖拽
+    speakerBtn.classList.add('active');
+    audioEl.src = audioList[idx % audioList.length];   // 多段音频循环播放
+    idx++;
+    try { audioEl.currentTime = 0; } catch (_) {}
+    const pr = audioEl.play();
+    if (pr && pr.catch) pr.catch(err => console.warn('音频播放失败:', err));
+    clearTimeout(timer);
+    timer = setTimeout(() => speakerBtn.classList.remove('active'), 1200);
+  });
+}
+
+/* ---------- 堆叠滑动 ---------- */
+let deck = HEROES.map((_, i) => i);   // deck[0] = 当前顶部英雄索引
+const STACK = 4;
+const THRESHOLD = 90;
+const FLY = 380;
+let dragging = false, startX = 0, startY = 0, dragX = 0, dragY = 0, moved = 0, locked = false;
+const stackArea = document.getElementById('stackArea');
+const counterEl = document.getElementById('counter');
+const dotsEl = document.getElementById('dots');
+
+function cardEl(idx) { return document.getElementById('c' + (idx + 1) + '_flipCard'); }
+function topCardEl() { return cardEl(deck[0]); }
+
+function applyStack() {
+  deck.forEach((heroIdx, pos) => {
+    const card = cardEl(heroIdx);
+    if (!card) return;
+    if (pos >= STACK) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    const scale = 1 - pos * 0.05;
+    const y = pos * 16;
+    const rot = pos === 0 ? 0 : (pos % 2 === 0 ? pos * 2.5 : -pos * 2.5);
+    card.style.transform = `translateY(${y}px) scale(${scale}) rotate(${rot}deg)`;
+    card.style.zIndex = 100 - pos;
+    card.style.opacity = '1';
+    card.style.boxShadow = pos === 0
+      ? '0 24px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)'
+      : `0 ${14 - pos*2}px ${26 - pos*4}px rgba(0,0,0,0.4)`;
+    card.style.transition = 'transform 360ms cubic-bezier(0.34,1.4,0.64,1), opacity 300ms ease, box-shadow 0.1s';
+    card.style.pointerEvents = pos === 0 ? 'auto' : 'none';
+    card.style.cursor = pos === 0 ? 'grab' : 'default';
+    if (pos !== 0) card.classList.remove('flipped');   // 仅顶部可翻转
+    const bp = card.querySelector('.badge-prev'), bn = card.querySelector('.badge-next');
+    if (bp) bp.style.opacity = '0';
+    if (bn) bn.style.opacity = '0';
+  });
+  counterEl.textContent = (deck[0] + 1) + ' / ' + HEROES.length;
+  [...dotsEl.children].forEach((d, i) => d.classList.toggle('active', i === deck[0]));
+}
+
+function isToolBtn(t) { return !!(t && t.closest && t.closest('.tool-btn')); }
+function onDown(e) {
+  if (locked) return;
+  if (e.currentTarget.id !== topCardEl().id) return;   // 仅顶层卡可拖
+  if (isToolBtn(e.target)) return;                      // 点 🔦/🔊 不触发拖拽与翻转
+  dragging = true; moved = 0;
+  startX = e.clientX; startY = e.clientY; dragX = 0; dragY = 0;
+  const tc = topCardEl();
+  tc.style.transition = 'none';
+  tc.style.cursor = 'grabbing';
+  try { tc.setPointerCapture(e.pointerId); } catch (_) {}
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+function onMove(e) {
+  if (!dragging) return;
+  dragX = e.clientX - startX; dragY = e.clientY - startY;
+  moved = Math.max(moved, Math.abs(dragX) + Math.abs(dragY));
+  const tc = topCardEl();
+  tc.style.transform = `translate(${dragX}px, ${dragY * 0.3}px) rotate(${dragX * 0.08}deg)`;
+  const bp = tc.querySelector('.badge-prev'), bn = tc.querySelector('.badge-next');
+  if (bp) bp.style.opacity = Math.max(0, Math.min(1, -dragX / THRESHOLD));
+  if (bn) bn.style.opacity = Math.max(0, Math.min(1, dragX / THRESHOLD));
+}
+function onUp() {
+  if (!dragging) return;
+  dragging = false;
+  document.removeEventListener('pointermove', onMove);
+  document.removeEventListener('pointerup', onUp);
+  const tc = topCardEl();
+  if (Math.abs(dragX) > THRESHOLD) {
+    swipe(dragX > 0 ? 'right' : 'left');
+  } else if (moved < 8) {
+    tc.classList.toggle('flipped');                  // 轻点 = 翻转
+    tc.style.transition = 'transform 360ms cubic-bezier(0.34,1.4,0.64,1)';
+    tc.style.transform = 'translateY(0) scale(1) rotate(0)';
+  } else {
+    tc.style.transition = 'transform 360ms cubic-bezier(0.34,1.4,0.64,1)';   // 回弹
+    tc.style.transform = 'translateY(0) scale(1) rotate(0)';
+  }
+}
+function swipe(dir) {
+  if (locked) return;
+  locked = true;
+  const tc = topCardEl();
+  const flyX = dir === 'left' ? -700 : 700;
+  tc.style.transition = `transform ${FLY}ms ease-in, opacity ${FLY}ms ease-in`;
+  tc.style.transform = `translate(${flyX}px, -60px) rotate(${dir === 'left' ? -28 : 28}deg)`;
+  tc.style.opacity = '0';
+  setTimeout(() => {
+    deck.push(deck.shift());   // 顶部移到底部，牌堆循环
+    applyStack();
+    locked = false;
+  }, FLY);
+}
+
+/* ---------- 初始化 ---------- */
+HEROES.forEach((hero, i) => {
+  const p = 'c' + (i + 1) + '_';
+  populateCard(hero, p);
+  initSpotlight(p);
+  initAudio(p, AUDIO[i] || []);
+  cardEl(i).addEventListener('pointerdown', onDown);
+});
+dotsEl.addEventListener('click', e => {
+  const i = [...dotsEl.children].indexOf(e.target);
+  if (i < 0 || locked) return;
+  while (deck[0] !== i) deck.push(deck.shift());
+  applyStack();
+});
+applyStack();
+
+</script>
+</body>
+</html>
