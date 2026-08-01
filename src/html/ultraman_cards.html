@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <!-- 资源已从 base64 改为从家庭 NAS 的 nginx 获取。
-     请将下面的 http://192.168.1.100:8080 替换为你家 NAS 的 nginx 实际地址（局域网 IP + 端口），
-     路径前缀为 /info/heros/ ，与 zip 包内的 info/heros/ 目录结构一致。 -->
+     请将下方脚本里的 NAS_BASE = 'http://192.168.1.2:35537' 替换为你家 NAS 的 nginx 实际地址（局域网 IP + 端口）。
+     数据来自 info/metainfo.json（手动维护的静态信息 + 脚本扫描得到的 media 区块）：
+       - 图片路径读取各英雄的 fullbody_local / babytype_local（形如 heros/01_初代奥特曼/fullbody.png）
+       - 音效列表由各英雄的 media.audio 提供（由 info/manifest.py 扫描 heros/<文件夹>/audio* 得到）
+     部署前请先运行 python info/manifest.py 生成/刷新 media 区块。 -->
 
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>奥特曼卡片 · 小批量验证（堆叠滑动 6张）</title>
+<title>奥特曼卡片 · XiaoYe</title>
 <style>
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -197,336 +200,83 @@ body {
 </style>
 </head>
 <body>
+<!-- 数据与音效来源：家庭 NAS 的 nginx 提供的 info/metainfo.json（见部署说明）。
+     请将下方脚本里的 NAS_BASE = 'http://192.168.1.100:8080' 改成你家 NAS 的实际地址（局域网 IP + 端口）。
+     卡片结构用 <template id="cardTpl"> 定义一份，加载时按 JSON 循环生成；
+     扩展数量只需：新建 info/heros/<NN_名称>/ 文件夹 → 在 metainfo.json 加一条 → 运行 python info/manifest.py。 -->
 <div class="header">
-  <div class="counter" id="counter">1 / 6</div>
-  <h1>奥特曼卡片 · 小批量验证</h1>
+  <div class="counter" id="counter">… / …</div>
+  <h1>奥特曼卡片</h1>
 </div>
 <div class="stack-area" id="stackArea">
-<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c1_flipCard">
-      <div class="flip-inner">
-        <div class="flip-face">
-          <div class="card-tcg">
-            <div class="tcg-border"></div>
-            <div class="tcg-img-bg" id="c1_frontImgArea">
-              <img src="http://192.168.1.100:8080/info/heros/01_初代奥特曼/fullbody.png" alt="奥特曼 正面">
-              <div class="tcg-img-gradient"></div>
-            </div>
-            <div class="tcg-topbar">
-              <div class="tcg-red-ball">★</div>
-              <span class="tcg-topbar-right" id="c1_tcgRarity">★★★★☆</span>
-            </div>
-            <div class="tcg-info">
-              <div class="tcg-name-cn" id="c1_tcgNameCn">赛罗</div>
-              <div class="tcg-stats">
-                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c1_tcgHeight">49m</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c1_tcgWeight">35000t</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c1_tcgSpeed">马赫7</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c1_tcgAge">5900岁</span></span>
-              </div>
-              <div class="tcg-effect" id="c1_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
-            </div>
-            <div class="tcg-bottombar">
-              <span id="c1_tcgNo">NO.033</span>
-              <span id="c1_tcgJustfor">@Dazhizi</span>
-            </div>
-          </div>
-        </div>
-        <div class="flip-face flip-back">
-          <div class="card-collect">
-            <div class="collect-title-bar">
-              <div class="collect-en-name" id="c1_collectEnName">Ultraman Zero</div>
-              <div class="collect-en-sub" id="c1_collectEnSub">赛罗奥特曼</div>
-            </div>
-            <div class="collect-img" id="c1_collectImg">
-              <img src="http://192.168.1.100:8080/info/heros/01_初代奥特曼/babytype.png" alt="奥特曼 背面">
-              <div class="spotlight-mask" id="c1_spotlightMask"></div>
-              <div class="spotlight-glow" id="c1_spotlightGlow"></div>
-            </div>
-            <div class="collect-body">
-              <div class="collect-works" id="c1_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
-              <div class="collect-tools">
-                <div class="tool-btn" id="c1_flashlightBtn" title="手电筒">🔦</div>
-                <div class="tool-btn" id="c1_speakerBtn" title="音效">🔊</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c2_flipCard">
-      <div class="flip-inner">
-        <div class="flip-face">
-          <div class="card-tcg">
-            <div class="tcg-border"></div>
-            <div class="tcg-img-bg" id="c2_frontImgArea">
-              <img src="http://192.168.1.100:8080/info/heros/02_佐菲奥特曼/fullbody.png" alt="佐菲 正面">
-              <div class="tcg-img-gradient"></div>
-            </div>
-            <div class="tcg-topbar">
-              <div class="tcg-red-ball">★</div>
-              <span class="tcg-topbar-right" id="c2_tcgRarity">★★★★☆</span>
-            </div>
-            <div class="tcg-info">
-              <div class="tcg-name-cn" id="c2_tcgNameCn">赛罗</div>
-              <div class="tcg-stats">
-                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c2_tcgHeight">49m</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c2_tcgWeight">35000t</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c2_tcgSpeed">马赫7</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c2_tcgAge">5900岁</span></span>
-              </div>
-              <div class="tcg-effect" id="c2_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
-            </div>
-            <div class="tcg-bottombar">
-              <span id="c2_tcgNo">NO.033</span>
-              <span id="c2_tcgJustfor">@Dazhizi</span>
-            </div>
-          </div>
-        </div>
-        <div class="flip-face flip-back">
-          <div class="card-collect">
-            <div class="collect-title-bar">
-              <div class="collect-en-name" id="c2_collectEnName">Ultraman Zero</div>
-              <div class="collect-en-sub" id="c2_collectEnSub">赛罗奥特曼</div>
-            </div>
-            <div class="collect-img" id="c2_collectImg">
-              <img src="http://192.168.1.100:8080/info/heros/02_佐菲奥特曼/babytype.png" alt="佐菲 背面">
-              <div class="spotlight-mask" id="c2_spotlightMask"></div>
-              <div class="spotlight-glow" id="c2_spotlightGlow"></div>
-            </div>
-            <div class="collect-body">
-              <div class="collect-works" id="c2_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
-              <div class="collect-tools">
-                <div class="tool-btn" id="c2_flashlightBtn" title="手电筒">🔦</div>
-                <div class="tool-btn" id="c2_speakerBtn" title="音效">🔊</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c3_flipCard">
-      <div class="flip-inner">
-        <div class="flip-face">
-          <div class="card-tcg">
-            <div class="tcg-border"></div>
-            <div class="tcg-img-bg" id="c3_frontImgArea">
-              <img src="http://192.168.1.100:8080/info/heros/03_赛文奥特曼/fullbody.png" alt="赛文 正面">
-              <div class="tcg-img-gradient"></div>
-            </div>
-            <div class="tcg-topbar">
-              <div class="tcg-red-ball">★</div>
-              <span class="tcg-topbar-right" id="c3_tcgRarity">★★★★☆</span>
-            </div>
-            <div class="tcg-info">
-              <div class="tcg-name-cn" id="c3_tcgNameCn">赛罗</div>
-              <div class="tcg-stats">
-                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c3_tcgHeight">49m</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c3_tcgWeight">35000t</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c3_tcgSpeed">马赫7</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c3_tcgAge">5900岁</span></span>
-              </div>
-              <div class="tcg-effect" id="c3_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
-            </div>
-            <div class="tcg-bottombar">
-              <span id="c3_tcgNo">NO.033</span>
-              <span id="c3_tcgJustfor">@Dazhizi</span>
-            </div>
-          </div>
-        </div>
-        <div class="flip-face flip-back">
-          <div class="card-collect">
-            <div class="collect-title-bar">
-              <div class="collect-en-name" id="c3_collectEnName">Ultraman Zero</div>
-              <div class="collect-en-sub" id="c3_collectEnSub">赛罗奥特曼</div>
-            </div>
-            <div class="collect-img" id="c3_collectImg">
-              <img src="http://192.168.1.100:8080/info/heros/03_赛文奥特曼/babytype.png" alt="赛文 背面">
-              <div class="spotlight-mask" id="c3_spotlightMask"></div>
-              <div class="spotlight-glow" id="c3_spotlightGlow"></div>
-            </div>
-            <div class="collect-body">
-              <div class="collect-works" id="c3_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
-              <div class="collect-tools">
-                <div class="tool-btn" id="c3_flashlightBtn" title="手电筒">🔦</div>
-                <div class="tool-btn" id="c3_speakerBtn" title="音效">🔊</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c4_flipCard">
-      <div class="flip-inner">
-        <div class="flip-face">
-          <div class="card-tcg">
-            <div class="tcg-border"></div>
-            <div class="tcg-img-bg" id="c4_frontImgArea">
-              <img src="http://192.168.1.100:8080/info/heros/04_杰克奥特曼/fullbody.png" alt="杰克 正面">
-              <div class="tcg-img-gradient"></div>
-            </div>
-            <div class="tcg-topbar">
-              <div class="tcg-red-ball">★</div>
-              <span class="tcg-topbar-right" id="c4_tcgRarity">★★★★☆</span>
-            </div>
-            <div class="tcg-info">
-              <div class="tcg-name-cn" id="c4_tcgNameCn">赛罗</div>
-              <div class="tcg-stats">
-                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c4_tcgHeight">49m</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c4_tcgWeight">35000t</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c4_tcgSpeed">马赫7</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c4_tcgAge">5900岁</span></span>
-              </div>
-              <div class="tcg-effect" id="c4_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
-            </div>
-            <div class="tcg-bottombar">
-              <span id="c4_tcgNo">NO.033</span>
-              <span id="c4_tcgJustfor">@Dazhizi</span>
-            </div>
-          </div>
-        </div>
-        <div class="flip-face flip-back">
-          <div class="card-collect">
-            <div class="collect-title-bar">
-              <div class="collect-en-name" id="c4_collectEnName">Ultraman Zero</div>
-              <div class="collect-en-sub" id="c4_collectEnSub">赛罗奥特曼</div>
-            </div>
-            <div class="collect-img" id="c4_collectImg">
-              <img src="http://192.168.1.100:8080/info/heros/04_杰克奥特曼/babytype.png" alt="杰克 背面">
-              <div class="spotlight-mask" id="c4_spotlightMask"></div>
-              <div class="spotlight-glow" id="c4_spotlightGlow"></div>
-            </div>
-            <div class="collect-body">
-              <div class="collect-works" id="c4_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
-              <div class="collect-tools">
-                <div class="tool-btn" id="c4_flashlightBtn" title="手电筒">🔦</div>
-                <div class="tool-btn" id="c4_speakerBtn" title="音效">🔊</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c5_flipCard">
-      <div class="flip-inner">
-        <div class="flip-face">
-          <div class="card-tcg">
-            <div class="tcg-border"></div>
-            <div class="tcg-img-bg" id="c5_frontImgArea">
-              <img src="http://192.168.1.100:8080/info/heros/05_艾斯奥特曼/fullbody.png" alt="艾斯 正面">
-              <div class="tcg-img-gradient"></div>
-            </div>
-            <div class="tcg-topbar">
-              <div class="tcg-red-ball">★</div>
-              <span class="tcg-topbar-right" id="c5_tcgRarity">★★★★☆</span>
-            </div>
-            <div class="tcg-info">
-              <div class="tcg-name-cn" id="c5_tcgNameCn">赛罗</div>
-              <div class="tcg-stats">
-                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c5_tcgHeight">49m</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c5_tcgWeight">35000t</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c5_tcgSpeed">马赫7</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c5_tcgAge">5900岁</span></span>
-              </div>
-              <div class="tcg-effect" id="c5_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
-            </div>
-            <div class="tcg-bottombar">
-              <span id="c5_tcgNo">NO.033</span>
-              <span id="c5_tcgJustfor">@Dazhizi</span>
-            </div>
-          </div>
-        </div>
-        <div class="flip-face flip-back">
-          <div class="card-collect">
-            <div class="collect-title-bar">
-              <div class="collect-en-name" id="c5_collectEnName">Ultraman Zero</div>
-              <div class="collect-en-sub" id="c5_collectEnSub">赛罗奥特曼</div>
-            </div>
-            <div class="collect-img" id="c5_collectImg">
-              <img src="http://192.168.1.100:8080/info/heros/05_艾斯奥特曼/babytype.png" alt="艾斯 背面">
-              <div class="spotlight-mask" id="c5_spotlightMask"></div>
-              <div class="spotlight-glow" id="c5_spotlightGlow"></div>
-            </div>
-            <div class="collect-body">
-              <div class="collect-works" id="c5_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
-              <div class="collect-tools">
-                <div class="tool-btn" id="c5_flashlightBtn" title="手电筒">🔦</div>
-                <div class="tool-btn" id="c5_speakerBtn" title="音效">🔊</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-<div class="badge-prev">上一个</div><div class="badge-next">下一个</div><div class="flip-card" id="c6_flipCard">
-      <div class="flip-inner">
-        <div class="flip-face">
-          <div class="card-tcg">
-            <div class="tcg-border"></div>
-            <div class="tcg-img-bg" id="c6_frontImgArea">
-              <img src="http://192.168.1.100:8080/info/heros/06_泰罗奥特曼/fullbody.png" alt="泰罗 正面">
-              <div class="tcg-img-gradient"></div>
-            </div>
-            <div class="tcg-topbar">
-              <div class="tcg-red-ball">★</div>
-              <span class="tcg-topbar-right" id="c6_tcgRarity">★★★★☆</span>
-            </div>
-            <div class="tcg-info">
-              <div class="tcg-name-cn" id="c6_tcgNameCn">赛罗</div>
-              <div class="tcg-stats">
-                <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="c6_tcgHeight">49m</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="c6_tcgWeight">35000t</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="c6_tcgSpeed">马赫7</span></span>
-                <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="c6_tcgAge">5900岁</span></span>
-              </div>
-              <div class="tcg-effect" id="c6_tcgEffect">【双重射线】赛罗头镖 · 赛罗眼镜</div>
-            </div>
-            <div class="tcg-bottombar">
-              <span id="c6_tcgNo">NO.033</span>
-              <span id="c6_tcgJustfor">@Dazhizi</span>
-            </div>
-          </div>
-        </div>
-        <div class="flip-face flip-back">
-          <div class="card-collect">
-            <div class="collect-title-bar">
-              <div class="collect-en-name" id="c6_collectEnName">Ultraman Zero</div>
-              <div class="collect-en-sub" id="c6_collectEnSub">赛罗奥特曼</div>
-            </div>
-            <div class="collect-img" id="c6_collectImg">
-              <img src="http://192.168.1.100:8080/info/heros/06_泰罗奥特曼/babytype.png" alt="泰罗 背面">
-              <div class="spotlight-mask" id="c6_spotlightMask"></div>
-              <div class="spotlight-glow" id="c6_spotlightGlow"></div>
-            </div>
-            <div class="collect-body">
-              <div class="collect-works" id="c6_collectWorks"><span style="color:#aaa;">来自</span> M78星云·光之国</div>
-              <div class="collect-tools">
-                <div class="tool-btn" id="c6_flashlightBtn" title="手电筒">🔦</div>
-                <div class="tool-btn" id="c6_speakerBtn" title="音效">🔊</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
+  <div class="badge-prev">上一个</div><div class="badge-next">下一个</div>
+  <!-- 卡片由 JS 依据 info/metainfo.json 动态生成，插入到此 -->
 </div>
-<div class="dots" id="dots">
-  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-</div>
+<div class="dots" id="dots"></div>
 <p class="hint">← 拖拽 / 滑动切换卡片 →　·　轻点卡片翻转　·　点击 🔦 触发聚光灯　·　点击 🔊 播放音效</p>
+
+<!-- ============ 卡片模板（仅一份，循环克隆） ============ -->
+<template id="cardTpl">
+  <div class="flip-card">
+    <div class="flip-inner">
+      <div class="flip-face">
+        <div class="card-tcg">
+          <div class="tcg-border"></div>
+          <div class="tcg-img-bg" id="tcgImgBg">
+            <img id="tcgFrontImg" alt="奥特曼 正面">
+            <div class="tcg-img-gradient"></div>
+          </div>
+          <div class="tcg-topbar">
+            <div class="tcg-red-ball">★</div>
+            <span class="tcg-topbar-right" id="tcgRarity"></span>
+          </div>
+          <div class="tcg-info">
+            <div class="tcg-name-cn" id="tcgNameCn"></div>
+            <div class="tcg-stats">
+              <span class="tcg-stat"><span class="tcg-stat-label">身高</span><span class="tcg-stat-val" id="tcgHeight"></span></span>
+              <span class="tcg-stat"><span class="tcg-stat-label">体重</span><span class="tcg-stat-val" id="tcgWeight"></span></span>
+              <span class="tcg-stat"><span class="tcg-stat-label">速度</span><span class="tcg-stat-val" id="tcgSpeed"></span></span>
+              <span class="tcg-stat"><span class="tcg-stat-label">年龄</span><span class="tcg-stat-val" id="tcgAge"></span></span>
+            </div>
+            <div class="tcg-effect" id="tcgEffect"></div>
+          </div>
+          <div class="tcg-bottombar">
+            <span id="tcgNo"></span>
+            <span id="tcgJustfor"></span>
+          </div>
+        </div>
+      </div>
+      <div class="flip-face flip-back">
+        <div class="card-collect">
+          <div class="collect-title-bar">
+            <div class="collect-en-name" id="collectEnName"></div>
+            <div class="collect-en-sub" id="collectEnSub"></div>
+          </div>
+          <div class="collect-img" id="collectImg">
+            <img id="collectBackImg" alt="奥特曼 背面">
+            <div class="spotlight-mask" id="spotlightMask"></div>
+            <div class="spotlight-glow" id="spotlightGlow"></div>
+          </div>
+          <div class="collect-body">
+            <div class="collect-works" id="collectWorks"></div>
+            <div class="collect-tools">
+              <div class="tool-btn" id="flashlightBtn" title="手电筒">🔦</div>
+              <div class="tool-btn" id="speakerBtn" title="音效">🔊</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script>
+const NAS_BASE = 'http://192.168.1.2:35537';   // ← 改成你家 NAS 的 nginx 实际地址（局域网 IP + 端口）
+const DATA_URL = NAS_BASE + '/info/metainfo.json';
+const JUSTFOR = 'Dazhizi';
+let HEROES = [];
 
-const JUSTFOR = "Dazhizi";
-const HEROES = [{"index": 1, "en": "Ultraman", "jp": "ウルトラマン", "cn": "奥特曼", "year": 1966, "works": "奥特曼(初代)", "height": "40m", "weight": "35000t", "speed": "马赫5", "home": "M78星云·光之国", "skill": "斯派修姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes01_ultraman.jpg", "rarity": 1, "logo_local": "heros/01_初代奥特曼/logo.png", "fullbody_local": "heros/01_初代奥特曼/fullbody.png", "thumbnail_local": "heros/01_初代奥特曼/thumbnail.jpg", "babytype_local": "heros/01_初代奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "20000岁", "transform_item": "贝塔魔棒", "weapon": "八分光轮", "activity_time": "3分钟"}, {"index": 2, "en": "Zoffy", "jp": "ゾフィー", "cn": "佐菲", "year": 1967, "works": "奥特曼", "height": "45m", "weight": "45000t", "speed": "马赫10", "home": "M78星云·光之国", "skill": "M87光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2019/05/Zoffy-Top.png", "rarity": 3, "logo_local": "heros/02_佐菲奥特曼/logo.png", "fullbody_local": "heros/02_佐菲奥特曼/fullbody.png", "thumbnail_local": "heros/02_佐菲奥特曼/thumbnail.png", "babytype_local": "heros/02_佐菲奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "25000岁", "transform_item": "无专属变身道具", "weapon": "奥特盾牌", "activity_time": "3分钟"}, {"index": 3, "en": "Ultraseven", "jp": "ウルトラセブン", "cn": "赛文", "year": 1967, "works": "赛文奥特曼", "height": "40m", "weight": "35000t", "speed": "马赫7", "home": "M78星云·光之国", "skill": "艾梅利姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes02_ultraseven.jpg", "rarity": 1, "logo_local": "heros/03_赛文奥特曼/logo.png", "fullbody_local": "heros/03_赛文奥特曼/fullbody.png", "thumbnail_local": "heros/03_赛文奥特曼/thumbnail.jpg", "babytype_local": "heros/03_赛文奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "19000岁", "transform_item": "奥特眼镜", "weapon": "头镖", "activity_time": "约3分钟"}, {"index": 4, "en": "Ultraman Jack", "jp": "ウルトラマンジャック", "cn": "杰克", "year": 1971, "works": "杰克奥特曼", "height": "40m", "weight": "35000t", "speed": "马赫5", "home": "M78星云·光之国", "skill": "斯派修姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes03_jack.jpg", "rarity": 2, "logo_local": "heros/04_杰克奥特曼/logo.png", "fullbody_local": "heros/04_杰克奥特曼/fullbody.png", "thumbnail_local": "heros/04_杰克奥特曼/thumbnail.jpg", "babytype_local": "heros/04_杰克奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "17000岁", "transform_item": "无专属变身道具（意念变身）", "weapon": "奥特手镯", "activity_time": "3分钟"}, {"index": 5, "en": "Ultraman Ace", "jp": "ウルトラマンA", "cn": "艾斯", "year": 1972, "works": "艾斯奥特曼", "height": "40m", "weight": "45000t", "speed": "马赫20", "home": "M78星云·光之国", "skill": "梅塔利姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes04_ace.jpg", "rarity": 2, "logo_local": "heros/05_艾斯奥特曼/logo.png", "fullbody_local": "heros/05_艾斯奥特曼/fullbody.png", "thumbnail_local": "heros/05_艾斯奥特曼/thumbnail.jpg", "babytype_local": "heros/05_艾斯奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "15000岁", "transform_item": "奥特戒指", "weapon": "奥特断头刀", "activity_time": "3分钟"}, {"index": 6, "en": "Ultraman Taro", "jp": "ウルトラマンタロウ", "cn": "泰罗", "year": 1973, "works": "泰罗奥特曼", "height": "53m", "weight": "55000t", "speed": "马赫20", "home": "M78星云·光之国", "skill": "斯特利姆光线", "image": "https://tsuburaya-prod.com/wp-content/uploads/2020/09/heroes05_taro.jpg", "rarity": 5, "logo_local": "heros/06_泰罗奥特曼/logo.png", "fullbody_local": "heros/06_泰罗奥特曼/fullbody.png", "thumbnail_local": "heros/06_泰罗奥特曼/thumbnail.jpg", "babytype_local": "heros/06_泰罗奥特曼/babytype.png", "github_matched": true, "gender": "男", "age": "12000岁", "transform_item": "奥特徽章", "weapon": "手镯王冠", "activity_time": "3分钟"}];
-const AUDIO = [["http://192.168.1.100:8080/info/heros/01_初代奥特曼/audio-yell-1.mp3"], ["http://192.168.1.100:8080/info/heros/02_佐菲奥特曼/audio-skill-1.mp3"], ["http://192.168.1.100:8080/info/heros/03_赛文奥特曼/audio-yell-1.mp3", "http://192.168.1.100:8080/info/heros/03_赛文奥特曼/audio-bell-1.mp3"], ["http://192.168.1.100:8080/info/heros/04_杰克奥特曼/audio-yell-1.mp3"], ["http://192.168.1.100:8080/info/heros/05_艾斯奥特曼/audio-yell-1.mp3"], ["http://192.168.1.100:8080/info/heros/06_泰罗奥特曼/audio-bell-1.mp3"]];    // 每个角色对应的音频 data URI 列表（按 yell>skill>bell 排序）
-
-/* ---------- 数据填充 ---------- */
+/* ---------- 数据填充（沿用原逻辑） ---------- */
 function populateCard(hero, p) {
   const set = (id, val) => { const el = document.getElementById(p + id); if (el) el.textContent = val; };
   const setHTML = (id, val) => { const el = document.getElementById(p + id); if (el) el.innerHTML = val; };
@@ -607,7 +357,7 @@ function initAudio(p, audioList) {
   speakerBtn.addEventListener('click', e => {
     e.stopPropagation();                       // 不触发卡片翻转/拖拽
     speakerBtn.classList.add('active');
-    audioEl.src = audioList[idx % audioList.length];   // 多段音频循环播放
+    audioEl.src = NAS_BASE + '/info/' + audioList[idx % audioList.length];   // 多段音频循环播放（相对路径转 NAS 绝对地址）
     idx++;
     try { audioEl.currentTime = 0; } catch (_) {}
     const pr = audioEl.play();
@@ -618,7 +368,7 @@ function initAudio(p, audioList) {
 }
 
 /* ---------- 堆叠滑动 ---------- */
-let deck = HEROES.map((_, i) => i);   // deck[0] = 当前顶部英雄索引
+let deck = [];   // deck[0] = 当前顶部英雄索引；在 boot() 中按 JSON 长度初始化
 const STACK = 4;
 const THRESHOLD = 90;
 const FLY = 380;
@@ -713,21 +463,64 @@ function swipe(dir) {
   }, FLY);
 }
 
+/* ---------- 模板渲染：按 JSON 生成所有卡片 ---------- */
+function prefixIds(root, prefix) {
+  root.querySelectorAll('[id]').forEach(el => { el.id = prefix + el.id; });
+}
+function renderCards() {
+  const tpl = document.getElementById('cardTpl');
+  stackArea.querySelectorAll('.flip-card').forEach(el => el.remove());  // 清空旧卡（保留静态 badge）
+  dotsEl.innerHTML = '';
+  HEROES.forEach((hero, i) => {
+    const p = 'c' + (i + 1) + '_';
+    const frag = tpl.content.cloneNode(true);
+    const card = frag.querySelector('.flip-card');
+    // 注意顺序：先查询（此时内部 id 尚未加前缀），再 prefixIds（卡片本身无 id，不会被二次加前缀），
+    // 最后再单独设置 card.id，避免卡片 id 被重复加前缀导致 cardEl() 查找失败、applyStack 整体空转。
+    const frontImg = frag.querySelector('#tcgFrontImg');
+    const backImg = frag.querySelector('#collectBackImg');
+    prefixIds(frag, p);                               // 内部 id 由 tcgNameCn → c1_tcgNameCn（卡片此时无 id，不受影响）
+    card.id = p + 'flipCard';                        // prefixIds 之后再设卡片 id，确保 DOM 中恰为 'c1_flipCard'
+    // 图片路径来自各英雄手动维护的 *_local（形如 heros/01_初代奥特曼/fullbody.png）
+    frontImg.src = NAS_BASE + '/info/' + (hero.fullbody_local || '');
+    backImg.src = NAS_BASE + '/info/' + (hero.babytype_local || '');
+    stackArea.appendChild(frag);
+    populateCard(hero, p);
+    initSpotlight(p);
+    initAudio(p, (hero.media && hero.media.audio) || []);
+    card.addEventListener('pointerdown', onDown);
+    const d = document.createElement('div');
+    d.className = 'dot';
+    dotsEl.appendChild(d);
+  });
+}
+
+/* ---------- 启动：拉取后台 JSON 后再渲染 ---------- */
+async function boot() {
+  try {
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    HEROES = Array.isArray(data) ? data : (data.heroes || []);
+  } catch (e) {
+    console.error('加载 metainfo.json 失败：', e);
+    document.getElementById('counter').textContent = '数据加载失败';
+    return;
+  }
+  if (!HEROES.length) { document.getElementById('counter').textContent = '无数据'; return; }
+  deck = HEROES.map((_, i) => i);
+  renderCards();
+  applyStack();
+}
+
 /* ---------- 初始化 ---------- */
-HEROES.forEach((hero, i) => {
-  const p = 'c' + (i + 1) + '_';
-  populateCard(hero, p);
-  initSpotlight(p);
-  initAudio(p, AUDIO[i] || []);
-  cardEl(i).addEventListener('pointerdown', onDown);
-});
 dotsEl.addEventListener('click', e => {
   const i = [...dotsEl.children].indexOf(e.target);
   if (i < 0 || locked) return;
   while (deck[0] !== i) deck.push(deck.shift());
   applyStack();
 });
-applyStack();
+boot();
 
 </script>
 </body>
