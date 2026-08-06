@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <!-- 资源已从 base64 改为从家庭 NAS 的 nginx 获取。
-     请将下方脚本里的 NAS_BASE = 'http://192.168.1.2:35537' 替换为你家 NAS 的 nginx 实际地址（局域网 IP + 端口）。
+     【内外网通用版】资源根地址不再硬编码局域网 IP，默认采用「当前页面域名」的同源相对路径 './info/'：
+       - 把本文件与 info/ 放在同一目录部署，无论用局域网 IP（http://192.168.1.2:35537/）还是花生壳域名（http://58879wfav850.vicp.fun/）打开，都会自动向「当前域名」请求数据，内/外网通用，无需手动切换。
+       - 仅需临时指向另一台服务器时，用 URL 参数：xxx.html?base=http://其他地址:端口 （仅本次生效，不记忆，避免内外网串味）。
      数据来自 info/metainfo.json（手动维护的静态信息 + 脚本扫描得到的 media 区块）：
        - 图片路径读取各英雄的 fullbody_local / babytype_local（形如 heros/01_初代奥特曼/fullbody.png）
        - 音效列表由各英雄的 media.audio 提供（由 info/manifest.py 扫描 heros/<文件夹>/audio* 得到）
@@ -201,7 +203,7 @@ body {
 </head>
 <body>
 <!-- 数据与音效来源：家庭 NAS 的 nginx 提供的 info/metainfo.json（见部署说明）。
-     请将下方脚本里的 NAS_BASE = 'http://192.168.1.100:8080' 改成你家 NAS 的实际地址（局域网 IP + 端口）。
+     资源根地址由脚本顶部的 RES_BASE / resUrl() 统一决定，默认同源相对路径 './info/'。
      卡片结构用 <template id="cardTpl"> 定义一份，加载时按 JSON 循环生成；
      扩展数量只需：新建 info/heros/<NN_名称>/ 文件夹 → 在 metainfo.json 加一条 → 运行 python info/manifest.py。 -->
 <div class="header">
@@ -271,8 +273,24 @@ body {
 </template>
 
 <script>
-const NAS_BASE = 'http://192.168.1.2:35537';   // ← 改成你家 NAS 的 nginx 实际地址（局域网 IP + 端口）
-const DATA_URL = NAS_BASE + '/info/metainfo.json';
+/* ==========================================================================
+   资源根地址：默认采用「当前页面所在域名」的同源相对路径 './info/'，
+   因此无论用局域网 IP（http://192.168.1.2:35537/）还是花生壳域名
+   （http://58879wfav850.vicp.fun/）打开，都会自动向「当前域名」请求数据，
+   内/外网通用，无需手动切换，也不会因为浏览器记忆了旧地址而串味。
+   仅当需要临时指向另一台服务器时，用 URL 参数：xxx.html?base=http://x.x.x.x:port
+   （仅本次访问生效，不做任何本地记忆）
+   ========================================================================== */
+const RES_BASE = (() => {
+  const q = new URLSearchParams(location.search).get('base');
+  if (q && q.trim()) return q.trim().replace(/\/+$/, '');   // 临时覆盖，单次生效，不记忆
+  return '';                                                // 空 → 同源相对路径（默认，内/外网通用）
+})();
+
+/* 统一的资源 URL 构造：所有图片 / 音频 / JSON 都必须经由此函数 */
+const resUrl = (p) => (RES_BASE ? RES_BASE.replace(/\/+$/, '') + '/info/' : './info/') + String(p || '').replace(/^\/+/, '');
+
+const DATA_URL = resUrl('metainfo.json');
 const JUSTFOR = 'Dazhizi';
 let HEROES = [];
 
@@ -290,7 +308,7 @@ function populateCard(hero, p) {
   set('tcgJustfor', '@' + JUSTFOR);
   set('tcgRarity', '★'.repeat(hero.rarity) + '☆'.repeat(5 - hero.rarity));
   set('collectEnName', hero.en);
-  set('collectEnSub', hero.works);
+  set('collectEnSub', hero.cn);
   setHTML('collectWorks', '<span style="color:#aaa;">来自</span> ' + hero.home);
 }
 
@@ -357,7 +375,7 @@ function initAudio(p, audioList) {
   speakerBtn.addEventListener('click', e => {
     e.stopPropagation();                       // 不触发卡片翻转/拖拽
     speakerBtn.classList.add('active');
-    audioEl.src = NAS_BASE + '/info/' + audioList[idx % audioList.length];   // 多段音频循环播放（相对路径转 NAS 绝对地址）
+    audioEl.src = resUrl(audioList[idx % audioList.length]);   // 多段音频循环播放（统一走 resUrl）
     idx++;
     try { audioEl.currentTime = 0; } catch (_) {}
     const pr = audioEl.play();
@@ -482,8 +500,9 @@ function renderCards() {
     prefixIds(frag, p);                               // 内部 id 由 tcgNameCn → c1_tcgNameCn（卡片此时无 id，不受影响）
     card.id = p + 'flipCard';                        // prefixIds 之后再设卡片 id，确保 DOM 中恰为 'c1_flipCard'
     // 图片路径来自各英雄手动维护的 *_local（形如 heros/01_初代奥特曼/fullbody.png）
-    frontImg.src = NAS_BASE + '/info/' + (hero.fullbody_local || '');
-    backImg.src = NAS_BASE + '/info/' + (hero.babytype_local || '');
+    frontImg.src = resUrl(hero.fullbody_local || '');
+    backImg.src = resUrl(hero.babytype_local || '');
+    frontImg.loading = 'lazy'; backImg.loading = 'lazy';   // 外网带宽下减轻首屏压力
     stackArea.appendChild(frag);
     populateCard(hero, p);
     initSpotlight(p);
@@ -503,8 +522,16 @@ async function boot() {
     const data = await res.json();
     HEROES = Array.isArray(data) ? data : (data.heroes || []);
   } catch (e) {
-    console.error('加载 metainfo.json 失败：', e);
-    document.getElementById('counter').textContent = '数据加载失败';
+    // 可诊断化的失败提示：外网排障时能直接区分「网络不通 / CORS 拦截 / 混合内容拦截 / 404」
+    console.error('加载 metainfo.json 失败：', e, '请求地址：', DATA_URL);
+    const c = document.getElementById('counter');
+    c.innerHTML = '数据加载失败'
+      + '<div style="margin-top:10px;font-size:11px;color:#c66;letter-spacing:0;text-transform:none;line-height:1.7;max-width:88vw;word-break:break-all;">'
+      + '请求地址：' + DATA_URL + '<br>'
+      + '错误信息：' + (e && e.message ? e.message : e) + '<br>'
+      + '排查：① 浏览器直接打开上面的地址看能否返回 JSON；② F12 控制台若报 CORS 需在服务端加 Access-Control-Allow-Origin；'
+      + '③ 若报 mixed-content 说明 HTTPS 页面在加载 HTTP 资源；④ 可用 <b>?base=资源根地址</b> 临时切换后端。'
+      + '</div>';
     return;
   }
   if (!HEROES.length) { document.getElementById('counter').textContent = '无数据'; return; }
