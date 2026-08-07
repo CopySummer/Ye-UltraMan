@@ -1,5 +1,5 @@
 {
-  "count": 53,
+  "count": 54,
   "justfor": "Dazhizi",
   "heroes": [
     {
@@ -1326,6 +1326,31 @@
       "transform_item": "暂未公开",
       "weapon": "暂未公开",
       "activity_time": "3分钟（默认常规）"
+    },
+    {
+      "index": 54,
+      "en": "Spiderman",
+      "jp": "蜘蛛侠",
+      "cn": "蜘蛛侠",
+      "year": 2026,
+      "works": "蜘蛛侠",
+      "height": "1.7m",
+      "weight": "65kg",
+      "speed": "40km/h",
+      "home": "地球",
+      "skill": "发射蛛丝",
+      "image": "",
+      "rarity": 5,
+      "logo_local": "",
+      "fullbody_local": "heros/54_蜘蛛侠/fullbody.png",
+      "thumbnail_local": "",
+      "babytype_local": "heros/54_蜘蛛侠/babytype.jpg",
+      "github_matched": true,
+      "gender": "男",
+      "age": "31岁",
+      "transform_item": "暂未公开",
+      "weapon": "坚硬的蛛丝",
+      "activity_time": "不限"
     }
   ]
 }

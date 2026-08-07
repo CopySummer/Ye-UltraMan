@@ -18,11 +18,11 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: #0a0a1a; color: #e0e0e0; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
 .stage { display: flex; gap: 50px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
-.flip-card { perspective: 1200px; width: 300px; height: 462px; }
-.flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1); transform-style: preserve-3d; cursor: pointer; }
-.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
-.flip-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 14px; overflow: hidden; }
-.flip-back { transform: rotateY(180deg); }
+.flip-card { width: 300px; height: 462px; }
+.flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1); transform-style: preserve-3d; transform: perspective(1200px) rotateY(0deg); will-change: transform; cursor: pointer; }
+.flip-card.flipped .flip-inner { transform: perspective(1200px) rotateY(180deg); }
+.flip-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; transform: translateZ(1px); }
+.flip-back { transform: rotateY(180deg) translateZ(1px); }
 /* 翻转后禁用正面点击，未翻转时禁用背面点击，防止遮挡 */
 .flip-card.flipped > .flip-inner > .flip-face:not(.flip-back) { pointer-events: none; }
 .flip-card:not(.flipped) > .flip-inner > .flip-back { pointer-events: none; }
@@ -89,14 +89,25 @@ body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: #0a0a
   width: 96%; height: 100%; object-fit: contain; object-position: center;
   position: relative; z-index: 2;
 }
-/* 聚光灯遮罩层 */
+/* A3：图片加载骨架底纹 + 淡入，消除白块闪烁 */
+.collect-img img, .tcg-img-bg img { transition: opacity .4s ease; }
+.collect-img::after, .tcg-img-bg::after {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0) 70%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.2s linear infinite;
+  opacity: 1; transition: opacity .3s ease;
+}
+.collect-img.loaded::after, .tcg-img-bg.loaded::after { opacity: 0; }
+@keyframes sk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* 聚光灯遮罩层：挂在 .card-collect 上，覆盖整张卡片（含标题栏 / 图片区 / 信息区） */
 .spotlight-mask {
-  position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background: transparent;
+  position: absolute; inset: 0; z-index: 20; pointer-events: none;
+  background: transparent; border-radius: 14px;
 }
 /* 中心高亮光晕 */
 .spotlight-glow {
-  position: absolute; z-index: 4; pointer-events: none;
+  position: absolute; z-index: 21; pointer-events: none;
   width: 70px; height: 70px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 40%, transparent 70%);
@@ -104,10 +115,10 @@ body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: #0a0a
   transform: translate(-50%, -50%);
   opacity: 0;
 }
-/* 光晕扩散消散动画 */
+/* 光晕扩散消散动画：终值需 ≥ 卡片对角线(约 551px)/0.7，取 900px 保证整卡被照亮 */
 @keyframes glowExpand {
   0%   { width: 70px; height: 70px; opacity: 1; }
-  100% { width: 600px; height: 600px; opacity: 0; }
+  100% { width: 900px; height: 900px; opacity: 0; }
 }
 .spotlight-glow.expanding {
   animation: glowExpand 5s ease-out forwards;
@@ -180,7 +191,7 @@ body {
 /* 堆叠区：所有卡片绝对定位于此 */
 .stack-area { position: relative; width: 300px; height: 462px; }
 /* 覆盖模板默认 .flip-card（改为堆叠绝对定位） */
-.flip-card { position: absolute; inset: 0; transform-origin: center bottom; will-change: transform; }
+.flip-card { position: absolute; inset: 0; transform-origin: center bottom; }
 .dots { display: flex; gap: 8px; margin-top: 26px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.22); transition: all 0.3s ease; cursor: pointer; }
 .dot.active { background: #ffd700; width: 22px; border-radius: 4px; }
@@ -194,9 +205,6 @@ body {
 .badge-prev { left: 24px; border: 2px solid #ffd700; color: #ffd700; transform: rotate(-12deg); }
 .badge-next { right: 24px; border: 2px solid #4ade80; color: #4ade80; transform: rotate(12deg); }
 
-
-.flip-card:not(.flipped) > .flip-inner > .flip-back { display: none !important; }
-.flip-card.flipped > .flip-inner > .flip-face:not(.flip-back) { display: none !important; }
 
 </style>
 </head>
@@ -248,15 +256,13 @@ body {
         </div>
       </div>
       <div class="flip-face flip-back">
-        <div class="card-collect">
+        <div class="card-collect" id="cardCollect">
           <div class="collect-title-bar">
             <div class="collect-en-name" id="collectEnName"></div>
             <div class="collect-cn-sub" id="collectCnSub"></div>
           </div>
           <div class="collect-img" id="collectImg">
             <img id="collectBackImg" alt="奥特曼 背面">
-            <div class="spotlight-mask" id="spotlightMask"></div>
-            <div class="spotlight-glow" id="spotlightGlow"></div>
           </div>
           <div class="collect-body">
             <div class="collect-works" id="collectWorks"></div>
@@ -265,6 +271,9 @@ body {
               <div class="tool-btn" id="speakerBtn" title="音效">🔊</div>
             </div>
           </div>
+          <!-- 聚光灯图层提升到卡片根节点，作用域 = 整张卡片（原先仅在 .collect-img 内） -->
+          <div class="spotlight-mask" id="spotlightMask"></div>
+          <div class="spotlight-glow" id="spotlightGlow"></div>
         </div>
       </div>
     </div>
@@ -312,13 +321,14 @@ function populateCard(hero, p) {
   setHTML('collectWorks', '<span style="color:#aaa;">来自</span> ' + hero.home);
 }
 
-/* ---------- 背面聚光灯（保留原交互） ---------- */
+/* ---------- 背面聚光灯（作用域 = 整张卡片） ---------- */
 function initSpotlight(p) {
-  const imgContainer = document.getElementById(p + 'collectImg');
+  // 基准容器由 .collect-img 改为 .card-collect：坐标换算与鼠标跟随范围覆盖整张卡片
+  const cardRoot = document.getElementById(p + 'cardCollect');
   const mask = document.getElementById(p + 'spotlightMask');
   const glow = document.getElementById(p + 'spotlightGlow');
   const flashlightBtn = document.getElementById(p + 'flashlightBtn');
-  if (!imgContainer || !mask || !glow) return;
+  if (!cardRoot || !mask || !glow) return;
   let isAnimating = false, spotlightActive = false, animFrame = null;
   function setSpotlight(px, py) {
     mask.style.background = `radial-gradient(circle 50px at ${px}% ${py}%, rgba(240,238,237,0) 0%, rgba(100,95,90,0.5) 55%, rgba(40,35,32,0.85) 100%)`;
@@ -326,13 +336,14 @@ function initSpotlight(p) {
   }
   function updateSpotlight(x, y) {
     if (isAnimating || !spotlightActive) return;
-    const rect = imgContainer.getBoundingClientRect();
+    const rect = cardRoot.getBoundingClientRect();
     setSpotlight(((x - rect.left) / rect.width) * 100, ((y - rect.top) / rect.height) * 100);
   }
   function playFlashlightShake() {
     isAnimating = true; spotlightActive = true;
     const startTime = performance.now(), shakeDuration = 5000, pauseDuration = 500, cx = 50, cy = 50;
-    const waypoints = [{x:50,y:50},{x:32,y:28},{x:68,y:62},{x:25,y:40},{x:55,y:20},{x:75,y:65},{x:18,y:52},{x:62,y:30},{x:45,y:58},{x:70,y:38},{x:30,y:48},{x:52,y:42},{x:50,y:50}];
+    // 巡游路径纵向扩展到 10%~90%，让光束扫过标题栏与底部信息区，而非只在图片区来回
+    const waypoints = [{x:50,y:50},{x:30,y:16},{x:70,y:74},{x:22,y:38},{x:56,y:11},{x:78,y:62},{x:16,y:56},{x:64,y:24},{x:42,y:88},{x:74,y:40},{x:26,y:70},{x:52,y:44},{x:50,y:50}];
     function animateShake(now) {
       const elapsed = now - startTime;
       if (elapsed >= shakeDuration) { setSpotlight(cx, cy); setTimeout(startExpand, pauseDuration); return; }
@@ -355,8 +366,8 @@ function initSpotlight(p) {
       isAnimating = false; spotlightActive = false;
     }, 5100);
   }
-  imgContainer.addEventListener('mousemove', e => updateSpotlight(e.clientX, e.clientY));
-  imgContainer.addEventListener('mouseleave', () => { if (!isAnimating && !spotlightActive) return; setSpotlight(50, 50); });
+  cardRoot.addEventListener('mousemove', e => updateSpotlight(e.clientX, e.clientY));
+  cardRoot.addEventListener('mouseleave', () => { if (!isAnimating && !spotlightActive) return; setSpotlight(50, 50); });
   if (flashlightBtn) flashlightBtn.addEventListener('click', e => {
     e.stopPropagation(); if (isAnimating) return;
     flashlightBtn.classList.add('active'); playFlashlightShake();
@@ -365,13 +376,15 @@ function initSpotlight(p) {
 }
 
 /* ---------- 背面 🔊 小喇叭音效 ---------- */
-function initAudio(p, audioList) {
+function initAudio(p, audioList, card) {
   const speakerBtn = document.getElementById(p + 'speakerBtn');
   if (!speakerBtn) return;
   if (!audioList || !audioList.length) { speakerBtn.style.display = 'none'; return; }  // 无音频则隐藏按钮
   const audioEl = new Audio();
   audioEl.preload = 'auto';
   let idx = 0, timer = null;
+  // A4：成为顶卡时由 refreshImageWindow 在空闲时段预热第一段，点击即播无需等待
+  if (card) card._audioPreheat = () => { if (!audioEl.src) audioEl.src = resUrl(audioList[idx % audioList.length]); };
   speakerBtn.addEventListener('click', e => {
     e.stopPropagation();                       // 不触发卡片翻转/拖拽
     speakerBtn.classList.add('active');
@@ -423,6 +436,46 @@ function applyStack() {
   });
   counterEl.textContent = (deck[0] + 1) + ' / ' + HEROES.length;
   [...dotsEl.children].forEach((d, i) => d.classList.toggle('active', i === deck[0]));
+  refreshImageWindow();   // A 档：每次堆叠变化后补位加载可见卡图片与顶卡音频
+}
+
+/* ---------- A 档：按需图片加载 / 音频空闲预热 ---------- */
+function attachFade(img, box) {
+  if (!img) return;
+  img.style.opacity = '0';
+  const done = () => { img.style.opacity = '1'; if (box) box.classList.add('loaded'); };
+  img.addEventListener('load', done);
+  img.addEventListener('error', () => { img.style.opacity = '1'; if (box) box.classList.add('loaded'); });
+  if (img.complete && img.naturalWidth > 0) done();   // 已缓存命中
+}
+function ensureImg(img) {
+  if (!img || img.dataset.loaded) return;
+  const url = img.dataset.src;
+  if (!url) return;
+  img.src = url;
+  img.dataset.loaded = '1';
+}
+function preheatAudio(card) {
+  if (!card || !card._audioPreheat) return;
+  if ('requestIdleCallback' in window) requestIdleCallback(() => card._audioPreheat(), { timeout: 1500 });
+  else setTimeout(() => card._audioPreheat(), 200);
+}
+function refreshImageWindow() {
+  deck.forEach((heroIdx, pos) => {
+    const card = cardEl(heroIdx);
+    if (!card) return;
+    const frontImg = card.querySelector('.tcg-img-bg img');
+    if (pos < STACK) {                       // A1：仅所有可见卡（≤4）加载正面图，避免堆叠露出骨架
+      ensureImg(frontImg);
+      if (frontImg) frontImg.setAttribute('fetchpriority', pos === 0 ? 'high' : 'auto');
+    }
+    if (pos <= 1) {                          // A2：顶卡 + 紧挨顶卡共 2 张预载背面图，首屏即提前加载，切换更顺滑
+      ensureImg(card.querySelector('.collect-img img'));
+    }
+    if (pos === 0) {                         // A4：仅顶卡（唯一可翻转/播放）空闲预热音频
+      preheatAudio(card);
+    }
+  });
 }
 
 function isToolBtn(t) { return !!(t && t.closest && t.closest('.tool-btn')); }
@@ -497,16 +550,20 @@ function renderCards() {
     // 最后再单独设置 card.id，避免卡片 id 被重复加前缀导致 cardEl() 查找失败、applyStack 整体空转。
     const frontImg = frag.querySelector('#tcgFrontImg');
     const backImg = frag.querySelector('#collectBackImg');
+    const frontBox = frag.querySelector('#tcgImgBg');
+    const backBox = frag.querySelector('#collectImg');
     prefixIds(frag, p);                               // 内部 id 由 tcgNameCn → c1_tcgNameCn（卡片此时无 id，不受影响）
     card.id = p + 'flipCard';                        // prefixIds 之后再设卡片 id，确保 DOM 中恰为 'c1_flipCard'
-    // 图片路径来自各英雄手动维护的 *_local（形如 heros/01_初代奥特曼/fullbody.png）
-    frontImg.src = resUrl(hero.fullbody_local || '');
-    backImg.src = resUrl(hero.babytype_local || '');
-    frontImg.loading = 'lazy'; backImg.loading = 'lazy';   // 外网带宽下减轻首屏压力
+    // A 档：图片不在此直接赋 src，改为写入 data-src，由 refreshImageWindow() 按需加载（见 applyStack）
+    if (hero.fullbody_local) frontImg.dataset.src = resUrl(hero.fullbody_local);
+    if (hero.babytype_local) backImg.dataset.src = resUrl(hero.babytype_local);
+    frontImg.loading = 'lazy'; backImg.loading = 'lazy';   // 次要兜底
+    attachFade(frontImg, frontBox);                  // A3：淡入 + 加载后隐藏骨架
+    attachFade(backImg, backBox);
     stackArea.appendChild(frag);
     populateCard(hero, p);
     initSpotlight(p);
-    initAudio(p, (hero.media && hero.media.audio) || []);
+    initAudio(p, (hero.media && hero.media.audio) || [], card);
     card.addEventListener('pointerdown', onDown);
     const d = document.createElement('div');
     d.className = 'dot';
